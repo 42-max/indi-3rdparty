@@ -487,16 +487,55 @@ bool ToupBase::updateProperties()
 
 bool ToupBase::Connect()
 {
+    XP(DeviceV2) pCameraInfo[CP(MAX)];
+    char tmpSerialNumber[32];
+
     LOGF_DEBUG("Attempting to open %s with ID %s using SDK version: %s", name, m_Instance->id, FP(Version()));
 
     if (isSimulation() == false)
     {
+        
         std::string fullID = m_Instance->id;
         // For RGB White Balance Mode, we need to add @ at the beginning as per docs.
         if (m_MonoCamera == false && WBAutoS[TC_AUTO_WB_RGB].s == ISS_ON)
             fullID = "@" + fullID;
 
-        m_CameraHandle = FP(Open(fullID.c_str()));
+        if (m_serialNumber[0] == 0x00)
+        {
+            // first Connection of the driver to this camera
+            m_CameraHandle = FP(Open(fullID.c_str()));
+            FP(get_SerialNumber(m_CameraHandle,m_serialNumber));
+            LOGF_DEBUG("First Connection: Serial Number: %s", m_serialNumber);            
+        }
+        else
+        {
+            LOGF_DEBUG("reconnect: Find camera with serial number: %s", m_serialNumber);
+            int iConnectedCamerasCount = FP(EnumV2(pCameraInfo));
+            LOGF_DEBUG("Found %d Cameras",iConnectedCamerasCount);
+
+            for (int i = 0; i < iConnectedCamerasCount; i++)
+            {
+                fullID = pCameraInfo[i].id;
+                LOGF_DEBUG("Ckeck Camera#%d with id %s for SerialNumer %s", i, fullID, m_serialNumber);
+                
+                m_CameraHandle = FP(Open(fullID.c_str()));
+                LOGF_DEBUG("Camerahandle %x", m_CameraHandle);
+                FP(get_SerialNumber(m_CameraHandle,tmpSerialNumber));
+                if (strcmp(m_serialNumber,tmpSerialNumber)==0)
+                {
+                    LOG_DEBUG("Camera Found :)");
+                    continue;
+                }
+                else
+                {
+                    LOG_DEBUG("Close Camera Handle and try next one");
+                    FP(Close(m_CameraHandle));
+                    m_CameraHandle = nullptr;
+                }
+
+            }
+        }
+        
     }
 
     if (m_CameraHandle == nullptr)
