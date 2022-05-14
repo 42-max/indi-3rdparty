@@ -485,32 +485,68 @@ bool ToupBase::updateProperties()
     return true;
 }
 
+// Temporary code for debugging --> will be removed in final version
+std::string dump(char d[], int len)
+{
+    std::stringstream s;
+    char tmp[10];
+
+    for(int i=0; i<len; i++)
+    {
+        if ((i%16) == 0) s << "\n";    
+        sprintf(tmp,"%02x ", (int)d[i]);
+        s << tmp;
+        
+    }
+    
+    return s.str();
+}
+
 bool ToupBase::Connect()
 {
     XP(DeviceV2) pCameraInfo[CP(MAX)];
-    char tmpSerialNumber[32];
+    int iConnectedCamerasCount;
 
     LOGF_DEBUG("Attempting to open %s with ID %s using SDK version: %s", name, m_Instance->id, FP(Version()));
 
+    iConnectedCamerasCount = FP(EnumV2(pCameraInfo));
+    LOGF_DEBUG("Connect Start: Found %d Cameras",iConnectedCamerasCount);
+    for(int n=0; n < iConnectedCamerasCount; n++)
+    {
+        LOGF_DEBUG("Camera #%d",n);
+    
+        LOG_DEBUG("pCameraInfo.id:");
+        LOG_DEBUG(dump(pCameraInfo[n].id, 64).c_str());      //remove in final version
+        //LOG_DEBUG(dump((char*)&(pCameraInfo[n].id[16]), 16).c_str()); //remove in final version
+        //LOG_DEBUG(dump(pCameraInfo[n].id[32], 16).c_str()); //remove in final version
+        //LOG_DEBUG(dump(pCameraInfo[n].id[48], 16).c_str()); //remove in final version
+
+
+        LOGF_DEBUG("Displayname: %s", pCameraInfo[n].displayname);
+
+
+    }
     if (isSimulation() == false)
     {
         
+
         std::string fullID = m_Instance->id;
         // For RGB White Balance Mode, we need to add @ at the beginning as per docs.
         if (m_MonoCamera == false && WBAutoS[TC_AUTO_WB_RGB].s == ISS_ON)
             fullID = "@" + fullID;
 
-        if (m_serialNumber[0] == 0x00)
+        if (m_DisplayName[0] == 0x00)
         {
             // first Connection of the driver to this camera
-            m_CameraHandle = FP(Open(fullID.c_str()));
+            strcpy(m_DisplayName,m_Instance->displayname);
+            m_CameraHandle = FP(Open(m_Instance->id));
             FP(get_SerialNumber(m_CameraHandle,m_serialNumber));
             LOGF_DEBUG("First Connection: Serial Number: %s", m_serialNumber);            
         }
         else
         {
             LOGF_DEBUG("reconnect: Find camera with serial number: %s", m_serialNumber);
-            int iConnectedCamerasCount = FP(EnumV2(pCameraInfo));
+            iConnectedCamerasCount = FP(EnumV2(pCameraInfo));
             LOGF_DEBUG("Found %d Cameras",iConnectedCamerasCount);
 
             for (int i = 0; i < iConnectedCamerasCount; i++)
@@ -518,19 +554,20 @@ bool ToupBase::Connect()
                 fullID = pCameraInfo[i].id;
                 LOGF_DEBUG("Ckeck Camera#%d with id %s for SerialNumer %s", i, fullID, m_serialNumber);
                 
-                m_CameraHandle = FP(Open(fullID.c_str()));
-                LOGF_DEBUG("Camerahandle %x", m_CameraHandle);
-                FP(get_SerialNumber(m_CameraHandle,tmpSerialNumber));
-                if (strcmp(m_serialNumber,tmpSerialNumber)==0)
+                //m_CameraHandle = FP(Open(fullID.c_str()));
+                //LOGF_DEBUG("Camerahandle %x", m_CameraHandle);
+                //FP(get_SerialNumber(m_CameraHandle,tmpSerialNumber));
+                if (strcmp(m_DisplayName,pCameraInfo[i].displayname)==0)
                 {
                     LOG_DEBUG("Camera Found :)");
-                    continue;
+                    m_CameraHandle = FP(Open(pCameraInfo[i].id));
+                    break;
                 }
                 else
                 {
-                    LOG_DEBUG("Close Camera Handle and try next one");
-                    FP(Close(m_CameraHandle));
-                    m_CameraHandle = nullptr;
+                    LOG_DEBUG("try next one");
+                    //FP(Close(m_CameraHandle));
+                    //m_CameraHandle = nullptr;
                 }
 
             }
@@ -544,6 +581,7 @@ bool ToupBase::Connect()
         return false;
     }
 
+    LOG_DEBUG("INIT ###");
     uint32_t cap = 0;
 
     cap |= CCD_CAN_ABORT;

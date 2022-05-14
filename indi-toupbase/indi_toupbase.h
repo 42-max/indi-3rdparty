@@ -347,7 +347,8 @@ class ToupBase : public INDI::CCD
             ulong timestamp; /* microsecond */
         };
 
-        char m_serialNumber[32] = {0};
+        char m_serialNumber[64] = {0};
+        char m_DisplayName[64] = {0};
         
         //#############################################################################
         // Capture
