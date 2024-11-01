@@ -356,6 +356,6 @@ class Skywatcher
 
         bool snapportstatus[NUMBER_OF_SKYWATCHERAXIS];
 
-        const long EQMOD_TIMEOUT = 200000; // us
+        const long EQMOD_TIMEOUT = 250000; // us
         const uint8_t EQMOD_MAX_RETRY = 10;
 };
